@@ -19,7 +19,7 @@ import type { Major } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import GenerateHeatmapButton from "./GenerateHeatmapButton";
 
 export default function MajorSelection({
@@ -45,24 +45,32 @@ export default function MajorSelection({
   const CommandInputRef = useRef<HTMLInputElement>(null);
   const CommandListRef = useRef<HTMLDivElement>(null);
 
-  const removeSelection = (major: Major) => {
-    setRemovingMajors([...removingMajors, major]);
+  const removeSelection = useCallback(
+    (major: Major) => {
+      setRemovingMajors([...removingMajors, major]);
 
-    setTimeout(() => {
-      setSelected(selected.filter((s) => s.id !== major.id));
-      setRemovingMajors(removingMajors.filter((m) => m.id !== major.id));
-    }, 100);
-  };
+      setTimeout(() => {
+        setSelected(selected.filter((s) => s.id !== major.id));
+        setRemovingMajors(removingMajors.filter((m) => m.id !== major.id));
+      }, 100);
+    },
+    [selected, removingMajors, setSelected],
+  );
 
-  const updateSelection = (major: Major) => {
-    selected.includes(major)
-      ? removeSelection(major)
-      : setSelected([...selected, major]);
+  const updateSelection = useCallback(
+    (major: Major) => {
+      if (selected.includes(major)) {
+        removeSelection(major);
+      } else {
+        setSelected([...selected, major]);
+      }
 
-    setTimeout(() => {
-      CommandInputRef.current?.focus();
-    }, 0);
-  };
+      setTimeout(() => {
+        CommandInputRef.current?.focus();
+      }, 0);
+    },
+    [selected, removeSelection, setSelected],
+  );
 
   useEffect(() => {
     if (CommandListRef.current) {

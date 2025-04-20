@@ -4,15 +4,8 @@ import MajorSelection from "@/app/_components/MajorSelection";
 import { getHeatmapDataByMajors } from "@/app/actions";
 import type { Major } from "@/db/schema";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import React from "react";
-
-// Define the data structure to match the actual response
-type HeatmapDataPoint = {
-  time: string;
-  name: string;
-  total_enrollment: number;
-};
 
 function HeatmapLegend() {
   return (
@@ -102,19 +95,8 @@ export default function Page() {
 
   // Fix the maxEnrollment calculation to properly handle the data
   const maxEnrollment = useMemo(() => {
-    if (!heatmapData || heatmapData.length === 0) return 0;
-
-    const validEnrollments = heatmapData
-      .map((item) => {
-        if (typeof item.total_enrollment === "number") {
-          return item.total_enrollment;
-        }
-        const parsed = Number.parseInt(String(item.total_enrollment));
-        return isNaN(parsed) ? 0 : parsed;
-      })
-      .filter((value) => !isNaN(value) && isFinite(value));
-
-    return validEnrollments.length > 0 ? Math.max(...validEnrollments, 1) : 1;
+    if (!heatmapData || heatmapData.length === 0) return 1;
+    return Math.max(...heatmapData.map((item) => item.enrolled), 1);
   }, [heatmapData]);
 
   // Helper to get enrollment for a specific time block and day
@@ -122,9 +104,9 @@ export default function Page() {
     if (!heatmapData || heatmapData.length === 0) return 0;
 
     // Filter records for this time and weekday
-    const timeRecords = heatmapData.filter((d) => {
+    const timeRecords = heatmapData.filter((data) => {
       try {
-        const timeString = String(d.time);
+        const timeString = String(data.time);
         const [hourStr, minuteStr] = timeString.split(":");
         const recordHour = Number.parseInt(hourStr);
         const recordMinute = Number.parseInt(minuteStr);
@@ -137,9 +119,9 @@ export default function Page() {
             ? recordMinute >= 0 && recordMinute < 30
             : recordMinute >= 30 && recordMinute < 60;
 
-        return recordHour === hour && minuteMatches && d.name === weekday;
+        return recordHour === hour && minuteMatches && data.weekday === weekday;
       } catch (err) {
-        console.error("Error parsing time:", d.time, err);
+        console.error("Error parsing time:", data.time, err);
         return false;
       }
     });
@@ -147,13 +129,8 @@ export default function Page() {
     if (timeRecords.length === 0) return 0;
 
     // Calculate average enrollment for this time block
-    const totalEnrollment = timeRecords.reduce((sum, record) => {
-      const enrollment =
-        typeof record.total_enrollment === "number"
-          ? record.total_enrollment
-          : Number.parseInt(String(record.total_enrollment)) || 0;
-
-      return sum + enrollment;
+    const totalEnrollment = timeRecords.reduce((sum, data) => {
+      return sum + data.enrolled;
     }, 0);
 
     return Math.round(totalEnrollment / timeRecords.length);
